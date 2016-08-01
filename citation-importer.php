@@ -5,7 +5,7 @@ Plugin URI: http://stephanieleary.com/
 Description: Import an arbitrary HTML citation into a post.
 Author: sillybean
 Author URI: http://stephanieleary.com/
-Version: 0.3.1
+Version: 0.3.2
 Text Domain: import-citation
 License: GPL version 2 or later - http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 */
@@ -163,7 +163,7 @@ class Citation_Importer extends WP_Importer {
 		$headers = array(
 			'cache-control' => 'no-cache',
 			'vary'  => 'Accept-Encoding',
-			'user-agent'  => 'WordPressCitationImporter/0.1;http://stephanieleary.com',
+			'user-agent'  => 'WordPressCitationImporter/0.3.1;' . get_home_url(),
 		);
 		
 		$response = wp_remote_get(
