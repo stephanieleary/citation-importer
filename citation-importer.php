@@ -5,7 +5,7 @@ Plugin URI: http://stephanieleary.com/
 Description: Import an arbitrary HTML citation into a post.
 Author: sillybean
 Author URI: http://stephanieleary.com/
-Version: 0.3
+Version: 0.3.1
 Text Domain: import-citation
 License: GPL version 2 or later - http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 */
@@ -111,7 +111,7 @@ class Citation_Importer extends WP_Importer {
 		$citation = preg_replace("/&nbsp;/", "", $_POST['citation-text'] );
 		$citation = trim( force_balance_tags( wp_kses_post( $citation ) ) );
 		
-		$items = array();
+		$items = $queries = array();
 		$is_xml = false;
 		libxml_clear_errors();
 		libxml_use_internal_errors( false );
@@ -135,11 +135,12 @@ class Citation_Importer extends WP_Importer {
 			$response = $this->retrieve_items( $query );
 			$short_doi = $response['alternative-id'][0];
 			$items[$short_doi] = $response;
-			set_transient( 'citation_query_' . $transient_key, $query, 24 * HOUR_IN_SECONDS );
+			$queries[$short_doi] = $query;
 		}
 		
 		if ( is_array( $items ) ) {
 			set_transient( 'citation_search_' . $transient_key, json_encode( $items ), 24 * HOUR_IN_SECONDS );
+			set_transient( 'citation_query_' . $transient_key, $queries, 24 * HOUR_IN_SECONDS );
 			$type = sanitize_text_field( $_POST['post-type'] );
 			if ( post_type_exists( $type ) )
 				set_transient( 'citation_type_' . $transient_key, $type, 24 * HOUR_IN_SECONDS );
@@ -259,7 +260,7 @@ class Citation_Importer extends WP_Importer {
 		
 		$transient_key = sanitize_key( $_POST['search_id'] );
 		$items = json_decode( get_transient( 'citation_search_' . $transient_key ), true );
-		$query = get_transient( 'citation_query_' . $transient_key );
+		$queries = get_transient( 'citation_query_' . $transient_key );
 		$post_type = get_transient( 'citation_type_' . $transient_key );
 		
 		foreach ( $citations as $short_doi ) {
@@ -267,7 +268,7 @@ class Citation_Importer extends WP_Importer {
 				_e( 'Could not find DOI in stored item index.', 'import-citation' );
 				continue;
 			}
-			$result = $this->insert_post( $items[$short_doi], $post_type, $query );
+			$result = $this->insert_post( $items[$short_doi], $post_type, $queries[$short_doi] );
 			if ( is_wp_error( $result ) )
 				echo $result->get_error_message();
 			else
