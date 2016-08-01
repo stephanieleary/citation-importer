@@ -5,7 +5,7 @@ Plugin URI: http://stephanieleary.com/
 Description: Import an arbitrary HTML citation into a post.
 Author: sillybean
 Author URI: http://stephanieleary.com/
-Version: 0.3.2
+Version: 0.3.3
 Text Domain: import-citation
 License: GPL version 2 or later - http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 */
@@ -61,6 +61,7 @@ class Citation_Importer extends WP_Importer {
 				$this->display( $transient );
 				break;
 			case 2 :
+				check_admin_referer( 'citation-select' );
 				$this->import( $_POST['checked'] );
 				break;
 		}
@@ -80,9 +81,9 @@ class Citation_Importer extends WP_Importer {
 		?>
 		<form method="post" action="<?php echo esc_url( $url ); ?>">
 			
-		<p>
+		<p> <label for="post-type"><?php _e( 'Import citations as...', 'import-citation' ); ?></label>
 			<select name="post-type">
-				<option value="0"><?php _e( 'Import citations as...' ); ?></option>
+				<option value="0"><?php _e( '-- Select --', 'import-citation' ) ?></option>
 				<?php foreach ( $post_types as $post_type ) : 
 					if ( 'attachment' !== $post_type->name ) : ?>
 					<option value="<?php echo esc_attr( $post_type->name ); ?>">
@@ -138,12 +139,11 @@ class Citation_Importer extends WP_Importer {
 			$queries[$short_doi] = $query;
 		}
 		
+		// store the results, the original queries, and the post type so we can display intermediate screen
 		if ( is_array( $items ) ) {
 			set_transient( 'citation_search_' . $transient_key, json_encode( $items ), 24 * HOUR_IN_SECONDS );
 			set_transient( 'citation_query_' . $transient_key, $queries, 24 * HOUR_IN_SECONDS );
-			$type = sanitize_text_field( $_POST['post-type'] );
-			if ( post_type_exists( $type ) )
-				set_transient( 'citation_type_' . $transient_key, $type, 24 * HOUR_IN_SECONDS );
+			set_transient( 'citation_type_' . $transient_key, $_POST['post-type'], 24 * HOUR_IN_SECONDS );
 		}
 		
 		return $transient_key;
@@ -156,10 +156,7 @@ class Citation_Importer extends WP_Importer {
 		
 		// rows=1 returns only the first result. We're feeling lucky.
 		$url = 'http://api.crossref.org/works?rows=1&query=' . urlencode( $query );
-		
-		// use the following for specific DOIs
-		//$url = 'http://search.labs.crossref.org/dois?q=' . urlencode( $query );
-		
+				
 		$headers = array(
 			'cache-control' => 'no-cache',
 			'vary'  => 'Accept-Encoding',
@@ -182,7 +179,7 @@ class Citation_Importer extends WP_Importer {
 	
 	function display( $transient ) {
 		$items = json_decode( get_transient( 'citation_search_' . $transient ), true );
-		if ( empty($items) ) {
+		if ( empty( $items ) ) {
 			printf( '<h4>%s</h4>', __( 'No citations found.', 'import-citation' ) );
 			return;
 		}
@@ -250,6 +247,7 @@ class Citation_Importer extends WP_Importer {
 			</tbody>
 		</table>
 		<p class="submit"><input type="submit" name="submit" class="button" value="<?php echo esc_attr( __( 'Import Publications', 'import-citation' ) ) ?>" /></p>
+		<?php wp_nonce_field( 'citation-select' ); ?>
 		</form>
 		<?php
 	}
@@ -261,11 +259,15 @@ class Citation_Importer extends WP_Importer {
 		$transient_key = sanitize_key( $_POST['search_id'] );
 		$items = json_decode( get_transient( 'citation_search_' . $transient_key ), true );
 		$queries = get_transient( 'citation_query_' . $transient_key );
-		$post_type = get_transient( 'citation_type_' . $transient_key );
+		$type = get_transient( 'citation_type_' . $transient_key );
+		if ( post_type_exists( sanitize_text_field( $type ) ) )
+			$post_type = $type;
+		else
+			$post_type = 'post';
 		
 		foreach ( $citations as $short_doi ) {
 			if ( !isset( $items[$short_doi] ) ) {
-				_e( 'Could not find DOI in stored item index.', 'import-citation' );
+				_e( 'Could not find selected publication in stored item index.', 'import-citation' );
 				continue;
 			}
 			$result = $this->insert_post( $items[$short_doi], $post_type, $queries[$short_doi] );
@@ -336,7 +338,7 @@ class Citation_Importer extends WP_Importer {
 			return __( 'Could not import citation.', 'import-citation' );
 			
 		if ( is_wp_error( $post_id ) )
-			return is_object( 'manage_options' ) ? $post_id->get_error_message() : __( 'Could not import citation.', 'import-citation' );
+			return current_user_can( 'manage_options' ) ? $post_id->get_error_message() : __( 'Could not import citation.', 'import-citation' );
 		
 		// if no errors, handle custom fields
 		foreach ( $fields as $name => $value ) {
