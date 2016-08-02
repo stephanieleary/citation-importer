@@ -5,7 +5,7 @@ Plugin URI: http://stephanieleary.com/
 Description: Import an arbitrary HTML citation into a post.
 Author: sillybean
 Author URI: http://stephanieleary.com/
-Version: 0.3.3
+Version: 0.4
 Text Domain: import-citation
 License: GPL version 2 or later - http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 */
@@ -25,6 +25,7 @@ if ( ! class_exists( 'WP_Importer' ) ) {
 		require $class_wp_importer;
 }
 
+// Importer Class
 if ( class_exists( 'WP_Importer' ) ) {
 class Citation_Importer extends WP_Importer {
 
@@ -32,7 +33,8 @@ class Citation_Importer extends WP_Importer {
 	var $citation = '';
 	var $items = array();
 	
-	function __construct() {}
+	
+	function __construct() { }
 
 	function header() {
 		echo '<div class="wrap">';
@@ -44,6 +46,7 @@ class Citation_Importer extends WP_Importer {
 	}
 
 	function dispatch() {
+		
 		if ( empty ( $_GET['step'] ) )
 			$step = 0;
 		else
@@ -123,20 +126,40 @@ class Citation_Importer extends WP_Importer {
 		}
 		else {
 			$rows = explode( "\n", $citation );
+			$rows = array_filter( $rows, 'filter_empty_text' );
+		}
+		
+		$total = count( $rows );
+		$current = 1;
+		if ( $total > 20 )
+			$batch = __( 'We are processing 20 at a time. Thanks for your patience.', 'import-citation' );
+		else
+			$batch = '';
+		
+		if ( $rows ) {
+			
+			_e( sprintf( '<p>Looking up %d citations... %s</p>', $total, $batch ) );
+			
+			echo '<div class="progress"">
+			  <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"> <span id="valuenow">0%</span> </div></div>';
+			flush();
 		}
 		
 		foreach ( $rows as $query ) {
-			// skip empty rows
-			if ( empty( $query ) )
-				continue;
-			
 			if ( $is_xml )
 				$query = $query->asXML();
-				
+			
 			$response = $this->retrieve_items( $query );
-			$short_doi = $response['alternative-id'][0];
-			$items[$short_doi] = $response;
-			$queries[$short_doi] = $query;
+			$doi = $response['DOI'];
+			$items[$doi] = $response;
+			$queries[$doi] = $query;
+			
+			$percentage = round( $current / $total * 100 );
+			$this->display_progress( $percentage );
+			$current++;
+			// pause after every 20 records
+			if ( $total > 20 && 0 == $total % $current )
+				sleep(5);
 		}
 		
 		// store the results, the original queries, and the post type so we can display intermediate screen
@@ -149,6 +172,21 @@ class Citation_Importer extends WP_Importer {
 		return $transient_key;
 	}
 	
+	function display_progress( $percentage ) { ?>
+		<script>
+			var percentage = <?php echo $percentage; ?>;
+			jQuery( ".progress-bar #valuenow" ).html( percentage + '%' );
+			jQuery( ".progress-bar" ).css( 'width', percentage + '%' );
+			jQuery( ".progress-bar" ).attr( 'aria-valuenow', percentage );
+		</script>
+		<?php
+		flush();
+	}
+	
+	function filter_empty_text( $val ) {
+		$val = str_replace( array( "\n", "\r", "\t" ), '', $val );
+	    return !empty( $val );
+	}
 	
 	function retrieve_items( $query = '' ) {
 		if ( empty( $query ) )
@@ -160,7 +198,7 @@ class Citation_Importer extends WP_Importer {
 		$headers = array(
 			'cache-control' => 'no-cache',
 			'vary'  => 'Accept-Encoding',
-			'user-agent'  => 'WordPressCitationImporter/0.3.1;' . get_home_url(),
+			'user-agent'  => 'WordPressCitationImporter/0.4;' . get_home_url(),
 		);
 		
 		$response = wp_remote_get(
@@ -180,12 +218,12 @@ class Citation_Importer extends WP_Importer {
 	function display( $transient ) {
 		$items = json_decode( get_transient( 'citation_search_' . $transient ), true );
 		if ( empty( $items ) ) {
-			printf( '<h4>%s</h4>', __( 'No citations found.', 'import-citation' ) );
+			printf( '<h3>%s</h3>', __( 'No citations found.', 'import-citation' ) );
 			return;
 		}
 		$url = add_query_arg( array( 'step' => 2, 'import' => 'citation' ), 'admin.php' );
 		?>
-		<h4><?php _e( 'Citation Search Results', 'import-citation' ); ?></h4>
+		<h3><?php _e( 'Citation Search Results', 'import-citation' ); ?></h3>
 		<form method="post" action="<?php echo esc_url( $url ); ?>">
 		<input type="hidden" name="search_id" value="<?php echo esc_attr( $transient ); ?>" />
  		<table class="wp-list-table widefat striped citations">
@@ -217,15 +255,14 @@ class Citation_Importer extends WP_Importer {
 			<?php
 			foreach( $items as $item ) :
 				$authors = array();
-				$short_doi = $item['alternative-id'][0];
 				$doi = esc_attr( $item['DOI'] ); 
 				?>
-				<tr data-doi="<?php echo $short_doi; ?>">
+				<tr data-doi="<?php echo $doi; ?>">
 					<th class="check-column" scope="row">
-						<label for="checkbox_<?php echo $short_doi; ?>" class="screen-reader-text">
+						<label for="checkbox_<?php echo $doi; ?>" class="screen-reader-text">
 							<?php printf( __( 'Select %s', 'import-citation' ), $item['title'][0] ); ?>
 						</label>
-						<input type="checkbox" id="checkbox_<?php echo $short_doi; ?>" value="<?php echo $short_doi; ?>" name="checked[]" checked>
+						<input type="checkbox" id="checkbox_<?php echo $doi; ?>" value="<?php echo $doi; ?>" name="checked[]" checked>
 					</th>
 					<td class="citation column-primary">
 						<a href="http://search.crossref.org/?q=<?php echo urlencode( $item['DOI'] ); ?>"><?php echo esc_html( $item['title'][0] ); ?></a>
@@ -265,12 +302,12 @@ class Citation_Importer extends WP_Importer {
 		else
 			$post_type = 'post';
 		
-		foreach ( $citations as $short_doi ) {
-			if ( !isset( $items[$short_doi] ) ) {
+		foreach ( $citations as $doi ) {
+			if ( !isset( $items[$doi] ) ) {
 				_e( 'Could not find selected publication in stored item index.', 'import-citation' );
 				continue;
 			}
-			$result = $this->insert_post( $items[$short_doi], $post_type, $queries[$short_doi] );
+			$result = $this->insert_post( $items[$doi], $post_type, $queries[$doi] );
 			if ( is_wp_error( $result ) )
 				echo $result->get_error_message();
 			else
@@ -288,20 +325,21 @@ class Citation_Importer extends WP_Importer {
 		// start building the WP post object to insert
 		$post = $fields = $authors = $terms = array();
 		
+		$date = date( 'Y-m-d H:i:s', strtotime( $item['created']['date-time'] ) );
+		
 		$post['post_type'] = $type;
 		$post['post_content'] = '';
 		$post['post_title'] = $item['title'][0];
 		$post['post_excerpt'] = $citation; // original query
 		$post['post_status'] = 'publish';
+		$post['post_date'] = $date;
 		
 		// attempt to retrieve abstract
 		$abstract_url = sprintf( 'http://api.crossref.org/works/%s.xml', urlencode( $item['DOI'] ) );
 		$abstract_response = wp_remote_get( $abstract_url );
 		if ( !is_wp_error( $abstract_response ) ) {
 			$pub = wp_remote_retrieve_body( $abstract_response );
-			$abstract = $pub->doi_record->journal->journal_article->{'jats:abstract'};
-			if ( !empty( $abstract ) )
-				$post['post_content'] = $abstract;
+		 	$post['post_content'] = $pub->doi_record->journal->journal_article->{'jats:abstract'};
 		}
 		
 		$post = apply_filters( 'citation_importer_postdata', $post, $item );
@@ -313,7 +351,7 @@ class Citation_Importer extends WP_Importer {
 		$fields['authors'] = implode( ', ', $authors );
 		$fields['doi'] = $item['DOI'];
 		$fields['url'] = $item['URL'];
-		$fields['pub_date'] = $item['created']['date-time'];
+		$fields['pub_date'] = $date;
 		$fields['source'] = $item['container-title'][0];
 		if ( !empty( $item['volume'] ) )
 			$fields['source'] .= ', vol. ' . $item['volume'];
@@ -362,4 +400,40 @@ class Citation_Importer extends WP_Importer {
 global $citation_importer;
 $citation_importer = new Citation_Importer();
 
-register_importer( 'citation', __( 'Citation', 'import-citation' ), __( 'Import an HTML citation.', 'import-citation' ), array( $citation_importer, 'dispatch' ) );
+register_importer( 'citation', __( 'Citation', 'import-citation' ), __( 'Import an HTML citation or bibliography.', 'import-citation' ), array( $citation_importer, 'dispatch' ) );
+
+
+
+// Load Importer styles
+// Echoing because enqueuing doesn't show up early enough for the ajax progress (why?)
+function citation_importer_print_styles() { ?>
+	<style>
+	.progress {
+	    background-color: #f5f5f5;
+	    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) inset;
+	    height: 1.8em;
+	    overflow: hidden;
+		position: relative;
+		width: 100%;
+	}
+	.progress-bar {
+	    background-color: #0073aa;
+		border-radius: 2px;
+	    box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.15) inset;
+	    color: #fff;
+	    font-size: 1em;
+	    height: 1.8em;
+	    line-height: 1.4em;
+		min-width: 2em;
+		position: absolute;
+	    text-align: center;
+	    transition: width 0.2s ease 0s;
+	}
+	#valuenow {
+		display: block;
+		padding: 4px;
+	}
+	</style> <?php
+}
+
+add_action( 'admin_head-admin.php',  'citation_importer_print_styles' );
