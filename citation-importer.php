@@ -2,10 +2,10 @@
 /*
 Plugin Name: Citation Importer
 Plugin URI: http://stephanieleary.com/
-Description: Import an arbitrary HTML citation into a post.
+Description: Import a citation or bibliography as posts.
 Author: sillybean
 Author URI: http://stephanieleary.com/
-Version: 0.4
+Version: 0.4.1
 Text Domain: import-citation
 License: GPL version 2 or later - http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 */
@@ -198,7 +198,7 @@ class Citation_Importer extends WP_Importer {
 		$headers = array(
 			'cache-control' => 'no-cache',
 			'vary'  => 'Accept-Encoding',
-			'user-agent'  => 'WordPressCitationImporter/0.4;' . get_home_url(),
+			'user-agent'  => 'WordPressCitationImporter/0.4.1;' . get_home_url(),
 		);
 		
 		$response = wp_remote_get(
@@ -313,6 +313,7 @@ class Citation_Importer extends WP_Importer {
 			else
 				echo $result;
 		}
+		printf( __( '<h3>All done. <a href="edit.php?post_type=%s">Have fun!</a></h3>', 'import-citation' ), $post_type );
 		do_action( 'import_done', 'citation' );
 	}
 	
@@ -333,14 +334,6 @@ class Citation_Importer extends WP_Importer {
 		$post['post_excerpt'] = $citation; // original query
 		$post['post_status'] = 'publish';
 		$post['post_date'] = $date;
-		
-		// attempt to retrieve abstract
-		$abstract_url = sprintf( 'http://api.crossref.org/works/%s.xml', urlencode( $item['DOI'] ) );
-		$abstract_response = wp_remote_get( $abstract_url );
-		if ( !is_wp_error( $abstract_response ) ) {
-			$pub = wp_remote_retrieve_body( $abstract_response );
-		 	$post['post_content'] = $pub->doi_record->journal->journal_article->{'jats:abstract'};
-		}
 		
 		$post = apply_filters( 'citation_importer_postdata', $post, $item );
 		
@@ -365,7 +358,7 @@ class Citation_Importer extends WP_Importer {
 		
 		$terms = apply_filters( 'citation_importer_termdata', $terms, $post, $item );
 		
-		//var_dump( $post, $fields, $taxes ); exit;
+		//var_dump( $post, $fields, $terms ); exit;
 		
 		
 		// create post
