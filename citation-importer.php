@@ -5,7 +5,7 @@ Plugin URI: http://stephanieleary.com/
 Description: Import a citation or bibliography as posts.
 Author: sillybean
 Author URI: http://stephanieleary.com/
-Version: 0.4.1
+Version: 0.4.2
 Text Domain: import-citation
 License: GPL version 2 or later - http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 */
@@ -98,7 +98,6 @@ class Citation_Importer extends WP_Importer {
 		
 		<?php wp_editor( '', 'citation-text', array( 'media_buttons' => false ) ); ?>
 		
-		<input type="hidden" name="action" value="save" />
 		<input type="hidden" name="search_id" value="<?php echo time(); ?>" />
 		
 		<p class="submit">
@@ -198,7 +197,7 @@ class Citation_Importer extends WP_Importer {
 		$headers = array(
 			'cache-control' => 'no-cache',
 			'vary'  => 'Accept-Encoding',
-			'user-agent'  => 'WordPressCitationImporter/0.4.1;' . get_home_url(),
+			'user-agent'  => 'WordPressCitationImporter/0.4.2;' . get_home_url(),
 		);
 		
 		$response = wp_remote_get(
@@ -236,13 +235,13 @@ class Citation_Importer extends WP_Importer {
 				<th class="manage-column column-name column-primary" id="name" scope="col">
 					<?php _e( 'Publication Title', 'import-citation' ); ?>
 				</th>
-				<th class="manage-column column-author" id="author" scope="col">
+				<th class="manage-column column-authors" id="authors" scope="col">
 					<?php _e( 'Authors', 'import-citation' ); ?>
 				</th>
-				<th class="manage-column column-source" id="author" scope="col">
+				<th class="manage-column column-source" id="source" scope="col">
 					<?php _e( 'Source', 'import-citation' ); ?>
 				</th>
-				<th class="manage-column column-date" id="author" scope="col">
+				<th class="manage-column column-date" id="date" scope="col">
 					<?php _e( 'Date', 'import-citation' ); ?>
 				</th>
 				<th class="manage-column column-doi" id="doi" scope="col">
