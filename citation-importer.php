@@ -67,13 +67,11 @@ class Citation_Importer extends WP_Importer {
 	function greet() { 
 		
 		$post_types = get_post_types( array( 'public' => true ), 'objects', 'and' );
+
+		_e( '<p>Paste your citations or CrossRef DOIs below. To use another agency\'s DOI, append /agency-name. You may also use <a href="http://search.crossref.org/help/search">any of the other searches accepted by crossref.org</a>, but this importer will return only the first match.</p>', 'import-citation' );
+		_e( '<p>You may enter multiple searches as bulleted or numbered lists, or one per line.</p>', 'import-citation' ); 
 		?>
-		
-		<?php 
-		printf( __( '<p>Paste your citations or CrossRef DOIs below. To use another agency\'s DOI, append /agency-name. You may also use <a href="http://search.crossref.org/help/search">any of the other searches accepted by crossref.org</a>, but this importer will return only the first match.</p>' ), 'http://search.crossref.org/help/search' ); 
-		_e( '<p>You may enter multiple searches as bulleted or numbered lists, or one per line.</p>' ); 
-		?>
-		<form method="post" action="admin.php?import=citation&step=1">
+		<form method="post" action="admin.php?import=citation&amp;step=1">
 			
 		<p> <label for="post-type"><?php _e( 'Import citations as...', 'import-citation' ); ?></label>
 			<select name="post-type">
@@ -108,7 +106,7 @@ class Citation_Importer extends WP_Importer {
 		$items = $queries = array();
 		$is_xml = false;
 		libxml_clear_errors();
-		libxml_use_internal_errors( false );
+		libxml_use_internal_errors( true );
 		$xml = simplexml_load_string( $citation );
 		if ( $xml ) {
 			$rows = $xml->xpath('//li');
@@ -116,7 +114,7 @@ class Citation_Importer extends WP_Importer {
 		}
 		else {
 			$rows = explode( "\n", $citation );
-			$rows = array_filter( $rows, array( &$this, 'filter_empty_text' ) );
+			$rows = array_filter( $rows, array( $this, 'filter_empty_text' ) );
 		}
 		
 		$total = count( $rows );
@@ -128,10 +126,12 @@ class Citation_Importer extends WP_Importer {
 		
 		if ( $rows ) {
 			
-			_e( sprintf( '<p>Looking up %d citations... %s</p>', $total, $batch ) );
+			echo '<p>'.__( sprintf( 'Looking up %d citations... %s', $total, $batch ) ).'</p>';
 			
 			echo '<div class="progress"">
-			  <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"> <span id="valuenow">0%</span> </div></div>';
+			  <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"> 
+				<span id="valuenow">0%</span> 
+			  </div></div>';
 			flush();
 		}
 		
@@ -208,12 +208,12 @@ class Citation_Importer extends WP_Importer {
 	function display( $transient ) {
 		$items = json_decode( get_transient( 'citation_search_' . $transient ), true );
 		if ( empty( $items ) ) {
-			printf( '<h3>%s</h3>', __( 'No citations found.', 'import-citation' ) );
+			echo '<h3>'.__( 'No citations found.', 'import-citation' ).'</h3>';
 			return;
 		}
 		?>
 		<h3><?php _e( 'Citation Search Results', 'import-citation' ); ?></h3>
-		<form method="post" action="admin.php?import=citation&step=2">
+		<form method="post" action="admin.php?import=citation&amp;step=2">
 		<input type="hidden" name="search_id" value="<?php echo esc_attr( $transient ); ?>" />
  		<table class="wp-list-table widefat striped citations">
 			<thead>
@@ -272,7 +272,7 @@ class Citation_Importer extends WP_Importer {
 				
 			</tbody>
 		</table>
-		<p class="submit"><input type="submit" name="submit" class="button" value="<?php echo esc_attr( __( 'Import Publications', 'import-citation' ) ) ?>" /></p>
+		<p class="submit"><?php submit_button( __( 'Import Publications', 'import-citation' ) ); ?></p>
 		<?php wp_nonce_field( 'citation-select' ); ?>
 		</form>
 		<?php
@@ -302,7 +302,9 @@ class Citation_Importer extends WP_Importer {
 			else
 				echo $result;
 		}
-		printf( __( '<h3>All done. <a href="edit.php?post_type=%s">Have fun!</a></h3>', 'import-citation' ), $post_type );
+		echo '<h3>';
+		printf( __( 'All done. <a href="edit.php?post_type=%s">Have fun!</a>', 'import-citation' ), $post_type );
+		echo '</h3>';
 		do_action( 'import_done', 'citation' );
 	}
 	
@@ -315,12 +317,14 @@ class Citation_Importer extends WP_Importer {
 		// start building the WP post object to insert
 		$post = $fields = $authors = $terms = array();
 		
+		$date = date( 'Y-m-d H:i:s', strtotime( $item['created']['date-time'] ) );
+		
 		$post['post_type'] = $type;
 		$post['post_content'] = '';
 		$post['post_title'] = $item['title'][0];
 		$post['post_excerpt'] = $citation; // original query
 		$post['post_status'] = 'publish';
-		$post['post_date'] = date( 'Y-m-d H:i:s', strtotime( $item['created']['date-time'] ) );
+		$post['post_date'] = $date;
 		
 		$post = apply_filters( 'citation_importer_postdata', $post, $item );
 		
@@ -389,25 +393,25 @@ register_importer( 'citation', __( 'Citation', 'import-citation' ), __( 'Import 
 function citation_importer_print_styles() { ?>
 	<style>
 	.progress {
-	    background-color: #f5f5f5;
-	    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) inset;
-	    height: 1.8em;
-	    overflow: hidden;
+		background-color: #f5f5f5;
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) inset;
+		height: 1.8em;
+		overflow: hidden;
 		position: relative;
 		width: 100%;
 	}
 	.progress-bar {
-	    background-color: #0073aa;
+		background-color: #0073aa;
 		border-radius: 2px;
-	    box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.15) inset;
-	    color: #fff;
-	    font-size: 1em;
-	    height: 1.8em;
-	    line-height: 1.4em;
+		box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.15) inset;
+		color: #fff;
+		font-size: 1em;
+		height: 1.8em;
+		line-height: 1.4em;
 		min-width: 2em;
 		position: absolute;
-	    text-align: center;
-	    transition: width 0.2s ease 0s;
+		text-align: center;
+		transition: width 0.2s ease 0s;
 	}
 	#valuenow {
 		display: block;
