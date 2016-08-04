@@ -5,16 +5,13 @@ Plugin URI: http://stephanieleary.com/
 Description: Import a citation or bibliography as posts.
 Author: sillybean
 Author URI: http://stephanieleary.com/
-Version: 0.4.2
+Version: 0.4.3
 Text Domain: import-citation
 License: GPL version 2 or later - http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 */
 
 if ( ! defined( 'WP_LOAD_IMPORTERS' ) )
 	return;
-
-/** Display verbose errors */
-define( 'IMPORT_DEBUG', false );
 
 // Load Importer API
 require_once ABSPATH . 'wp-admin/includes/import.php';
@@ -28,11 +25,6 @@ if ( ! class_exists( 'WP_Importer' ) ) {
 // Importer Class
 if ( class_exists( 'WP_Importer' ) ) {
 class Citation_Importer extends WP_Importer {
-
-	var $post_type = 'post';
-	var $citation = '';
-	var $items = array();
-	
 	
 	function __construct() { }
 
@@ -74,7 +66,6 @@ class Citation_Importer extends WP_Importer {
 	
 	function greet() { 
 		
-		$url = add_query_arg( array( 'step' => 1, 'import' => 'citation' ), 'admin.php' );
 		$post_types = get_post_types( array( 'public' => true ), 'objects', 'and' );
 		?>
 		
@@ -82,7 +73,7 @@ class Citation_Importer extends WP_Importer {
 		printf( __( '<p>Paste your citations or CrossRef DOIs below. To use another agency\'s DOI, append /agency-name. You may also use <a href="http://search.crossref.org/help/search">any of the other searches accepted by crossref.org</a>, but this importer will return only the first match.</p>' ), 'http://search.crossref.org/help/search' ); 
 		_e( '<p>You may enter multiple searches as bulleted or numbered lists, or one per line.</p>' ); 
 		?>
-		<form method="post" action="<?php echo esc_url( $url ); ?>">
+		<form method="post" action="admin.php?import=citation&step=1">
 			
 		<p> <label for="post-type"><?php _e( 'Import citations as...', 'import-citation' ); ?></label>
 			<select name="post-type">
@@ -125,7 +116,7 @@ class Citation_Importer extends WP_Importer {
 		}
 		else {
 			$rows = explode( "\n", $citation );
-			$rows = array_filter( $rows, 'filter_empty_text' );
+			$rows = array_filter( $rows, array( &$this, 'filter_empty_text' ) );
 		}
 		
 		$total = count( $rows );
@@ -197,7 +188,7 @@ class Citation_Importer extends WP_Importer {
 		$headers = array(
 			'cache-control' => 'no-cache',
 			'vary'  => 'Accept-Encoding',
-			'user-agent'  => 'WordPressCitationImporter/0.4.2;' . get_home_url(),
+			'user-agent'  => 'WordPressCitationImporter/0.4.3;' . get_home_url(),
 		);
 		
 		$response = wp_remote_get(
@@ -220,10 +211,9 @@ class Citation_Importer extends WP_Importer {
 			printf( '<h3>%s</h3>', __( 'No citations found.', 'import-citation' ) );
 			return;
 		}
-		$url = add_query_arg( array( 'step' => 2, 'import' => 'citation' ), 'admin.php' );
 		?>
 		<h3><?php _e( 'Citation Search Results', 'import-citation' ); ?></h3>
-		<form method="post" action="<?php echo esc_url( $url ); ?>">
+		<form method="post" action="admin.php?import=citation&step=2">
 		<input type="hidden" name="search_id" value="<?php echo esc_attr( $transient ); ?>" />
  		<table class="wp-list-table widefat striped citations">
 			<thead>
@@ -325,14 +315,12 @@ class Citation_Importer extends WP_Importer {
 		// start building the WP post object to insert
 		$post = $fields = $authors = $terms = array();
 		
-		$date = date( 'Y-m-d H:i:s', strtotime( $item['created']['date-time'] ) );
-		
 		$post['post_type'] = $type;
 		$post['post_content'] = '';
 		$post['post_title'] = $item['title'][0];
 		$post['post_excerpt'] = $citation; // original query
 		$post['post_status'] = 'publish';
-		$post['post_date'] = $date;
+		$post['post_date'] = date( 'Y-m-d H:i:s', strtotime( $item['created']['date-time'] ) );
 		
 		$post = apply_filters( 'citation_importer_postdata', $post, $item );
 		
