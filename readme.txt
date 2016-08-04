@@ -22,6 +22,12 @@ The plugin uses the [CrossRef Metadata API](http://search.crossref.org/help/api)
 4. Correcting typos after import
 
 ## Changelog
+### 0.4.3
+* Remove verbose errors
+* Suppress XML errors
+* Fix filter empty text reference
+* String cleanup
+
 ### 0.4.2
 * Fix column IDs
 
@@ -32,7 +38,7 @@ The plugin uses the [CrossRef Metadata API](http://search.crossref.org/help/api)
 * Add progress bar, batch pause, and date formatting
 * Remove short DOI, as it is not always present
 
-### 0 0.3.3
+### 0.3.3
 * Move post type logic
 * Add labels and nonces
 
