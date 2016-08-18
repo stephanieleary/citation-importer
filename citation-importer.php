@@ -5,7 +5,7 @@ Plugin URI: http://stephanieleary.com/
 Description: Import a citation or bibliography as posts.
 Author: sillybean
 Author URI: http://stephanieleary.com/
-Version: 0.4.3
+Version: 0.5
 Text Domain: import-citation
 License: GPL version 2 or later - http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 */
@@ -188,7 +188,7 @@ class Citation_Importer extends WP_Importer {
 		$headers = array(
 			'cache-control' => 'no-cache',
 			'vary'  => 'Accept-Encoding',
-			'user-agent'  => 'WordPressCitationImporter/0.4.3;' . get_home_url(),
+			'user-agent'  => 'WordPressCitationImporter/0.5;' . get_home_url(),
 		);
 		
 		$response = wp_remote_get(
@@ -249,7 +249,7 @@ class Citation_Importer extends WP_Importer {
 				<tr data-doi="<?php echo $doi; ?>">
 					<th class="check-column" scope="row">
 						<label for="checkbox_<?php echo $doi; ?>" class="screen-reader-text">
-							<?php printf( __( 'Select %s', 'import-citation' ), $item['title'][0] ); ?>
+							<?php printf( __( 'Select %s', 'import-citation' ), esc_html( $item['title'][0] ) ); ?>
 						</label>
 						<input type="checkbox" id="checkbox_<?php echo $doi; ?>" value="<?php echo $doi; ?>" name="checked[]" checked>
 					</th>
@@ -326,6 +326,7 @@ class Citation_Importer extends WP_Importer {
 		$post['post_status'] = 'publish';
 		$post['post_date'] = $date;
 		
+		$post = array_map( 'sanitize_text_field', $post );
 		$post = apply_filters( 'citation_importer_postdata', $post, $item );
 		
 		// custom fields		
@@ -342,11 +343,13 @@ class Citation_Importer extends WP_Importer {
 		if ( !empty( $item['issue'] ) )
 			$fields['source'] .= ', issue ' . $item['issue'];
 		
+		$fields = array_map( 'sanitize_text_field', $fields );
 		$fields = apply_filters( 'citation_importer_fielddata', $fields, $post, $item );
 		
 		// taxonomy terms
 		$terms['pubtype'] = $item['type']; // slug
 		
+		$terms = array_map( 'sanitize_text_field', $terms );
 		$terms = apply_filters( 'citation_importer_termdata', $terms, $post, $item );
 		
 		//var_dump( $post, $fields, $terms ); exit;
