@@ -23,8 +23,11 @@ The plugin uses the [CrossRef Metadata API](http://search.crossref.org/help/api)
 
 ## Changelog
 
-### 0.5.1
+### 0.6
 * Query the Crossref Metadata API for both DOI and text query
+* Remove markup from queries for more accurate results
+* Handle responses with no items
+* Translate single vs. multiple citations correctly
 * Clean up submit buttons
 
 ### 0.5

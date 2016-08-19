@@ -5,7 +5,7 @@ Plugin URI: http://stephanieleary.com/
 Description: Import a citation or bibliography as posts.
 Author: sillybean
 Author URI: http://stephanieleary.com/
-Version: 0.5.1
+Version: 0.6
 Text Domain: import-citation
 License: GPL version 2 or later - http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 */
@@ -124,7 +124,7 @@ class Citation_Importer extends WP_Importer {
 		
 		if ( $rows ) {
 			
-			echo '<p>'.__( sprintf( 'Looking up %d citations... %s', $total, $batch ) ).'</p>';
+			echo '<p>'.sprintf( _n( 'Looking up %d citation...', 'Looking up %d citations...', $total, 'import-citation' ), $total ).$batch.'</p>';
 			
 			echo '<div class="progress"">
 			  <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"> 
@@ -135,9 +135,9 @@ class Citation_Importer extends WP_Importer {
 		
 		foreach ( $rows as $query ) {
 			if ( $is_xml )
-				$query = $query->asXML();
+				$query = (string) $query;
 			
-			$response = $this->retrieve_items( $query );
+			$response = $this->retrieve_items( trim( $query ) );
 			$doi = $response['DOI'];
 			$items[$doi] = $response;
 			$queries[$doi] = $query;
@@ -191,7 +191,7 @@ class Citation_Importer extends WP_Importer {
 		$headers = array(
 			'cache-control' => 'no-cache',
 			'vary'  => 'Accept-Encoding',
-			'user-agent'  => 'WordPressCitationImporter/0.5.1;' . get_home_url(),
+			'user-agent'  => 'WordPressCitationImporter/0.6;' . get_home_url(),
 		);
 		
 		// Try the direct DOI first.
@@ -213,7 +213,10 @@ class Citation_Importer extends WP_Importer {
 
 		if ( ! is_wp_error( $searchResponse ) ) {
 			$result = json_decode( wp_remote_retrieve_body( $searchResponse ), true );
-			return $result['message']['items'][0];
+			if ( !empty( $result['message']['items'] ) )
+				return $result['message']['items'][0];
+			else
+				return;
 		}
 
 		// Failing that, return error code.
@@ -226,6 +229,7 @@ class Citation_Importer extends WP_Importer {
 			echo '<h3>'.__( 'No citations found.', 'import-citation' ).'</h3>';
 			return;
 		}
+		$queries = get_transient( 'citation_query_' . $transient );
 		?>
 		<h3><?php _e( 'Citation Search Results', 'import-citation' ); ?></h3>
 		<form method="post" action="admin.php?import=citation&amp;step=2">
@@ -257,7 +261,19 @@ class Citation_Importer extends WP_Importer {
 			<tbody id="the-list">
 				
 			<?php
-			foreach( $items as $item ) :
+			foreach( $items as $index => $item ) :
+				
+				if ( empty( $item ) ) { ?>
+					<tr>
+						<th></th>
+						<td class="citation column-primary" colspan="5">
+							<?php printf( __( 'No results found for "%s."', 'import-citation' ), $queries[$index] ); ?>
+						</td>
+					</tr>
+				<?php
+				continue;
+				}
+				
 				$authors = array();
 				$doi = esc_attr( $item['DOI'] ); 
 				?>
