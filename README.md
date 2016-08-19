@@ -4,7 +4,7 @@ Tags: academic, bibliography, citations, crossref, doi, scholar
 Donate link: http://stephanieleary.com/code/wordpress/wordpress-citation-importer/
 Requires at least: 3.0
 Tested up to: 4.6
-Stable tag: 0.5.1
+Stable tag: 0.6
 License: GPL2
 License URI: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 
