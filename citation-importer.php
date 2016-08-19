@@ -5,7 +5,7 @@ Plugin URI: http://stephanieleary.com/
 Description: Import a citation or bibliography as posts.
 Author: sillybean
 Author URI: http://stephanieleary.com/
-Version: 0.5
+Version: 0.5.1
 Text Domain: import-citation
 License: GPL version 2 or later - http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 */
@@ -89,9 +89,7 @@ class Citation_Importer extends WP_Importer {
 		
 		<input type="hidden" name="search_id" value="<?php echo time(); ?>" />
 		
-		<p class="submit">
-			<input type="submit" name="submit" class="button" value="<?php echo esc_attr( __( 'Import Publications', 'import-citation' ) ); ?>" />
-		</p>
+		<p class="submit"><?php submit_button( __( 'Import Publications', 'import-citation' ), 'primary' ); ?></p>
 		<?php wp_nonce_field( 'citation-import' ); ?>
 		</form>
 	<?php
@@ -193,7 +191,7 @@ class Citation_Importer extends WP_Importer {
 		$headers = array(
 			'cache-control' => 'no-cache',
 			'vary'  => 'Accept-Encoding',
-			'user-agent'  => 'WordPressCitationImporter/0.5;' . get_home_url(),
+			'user-agent'  => 'WordPressCitationImporter/0.5.1;' . get_home_url(),
 		);
 		
 		// Try the direct DOI first.
@@ -202,7 +200,7 @@ class Citation_Importer extends WP_Importer {
 				 array( 'ssl_verify' => true, 'headers' => $headers )
 		);
 
-		if (wp_remote_retrieve_response_code($workResponse) == 200 && ! is_wp_error( $workResponse ) ) {
+		if ( wp_remote_retrieve_response_code( $workResponse ) == 200 && ! is_wp_error( $workResponse ) ) {
 			$result = json_decode( wp_remote_retrieve_body( $workResponse ), true );
 			return $result['message'];
 		}
@@ -219,7 +217,7 @@ class Citation_Importer extends WP_Importer {
 		}
 
 		// Failing that, return error code.
-		return current_user_can( 'manage_options' ) ? $response->get_error_message() : '';
+		return current_user_can( 'manage_options' ) ? $searchResponse->get_error_message() : '';
 	}
 	
 	function display( $transient ) {
@@ -289,7 +287,7 @@ class Citation_Importer extends WP_Importer {
 				
 			</tbody>
 		</table>
-		<p class="submit"><?php submit_button( __( 'Import Publications', 'import-citation' ) ); ?></p>
+		<p class="submit"><?php submit_button( __( 'Import Publications', 'import-citation' ), 'primary' ); ?></p>
 		<?php wp_nonce_field( 'citation-select' ); ?>
 		</form>
 		<?php
