@@ -179,11 +179,16 @@ class Citation_Importer extends WP_Importer {
 	}
 	
 	function retrieve_items( $query = '' ) {
-		if ( empty( $query ) )
+		if ( empty( $query ) ) {
 			return;
+		}
 		
+		// Query for direct existence of DOI.
+		$workUrl = 'http://api.crossref.org/works/' . urlencode( $query );
+
+		// Or search for it.
 		// rows=1 returns only the first result. We're feeling lucky.
-		$url = 'http://api.crossref.org/works?rows=1&query=' . urlencode( $query );
+		$searchUrl = 'http://api.crossref.org/works?rows=1&query=' . urlencode( $query );
 				
 		$headers = array(
 			'cache-control' => 'no-cache',
@@ -191,18 +196,30 @@ class Citation_Importer extends WP_Importer {
 			'user-agent'  => 'WordPressCitationImporter/0.5;' . get_home_url(),
 		);
 		
-		$response = wp_remote_get(
-		     $url,
-		     array( 'ssl_verify' => true, 'headers' => $headers )
+		// Try the direct DOI first.
+		$workResponse = wp_remote_get(
+				 $workUrl,
+				 array( 'ssl_verify' => true, 'headers' => $headers )
 		);
+
+		if (wp_remote_retrieve_response_code($workResponse) == 200 && ! is_wp_error( $workResponse ) ) {
+			$result = json_decode( wp_remote_retrieve_body( $workResponse ), true );
+			return $result['message'];
+		}
 		
-		if ( is_wp_error( $response ) )
-		    return current_user_can( 'manage_options' ) ? $response->get_error_message() : '';
+		// Try as a query next.
+		$searchResponse = wp_remote_get(
+				 $searchUrl,
+				 array( 'ssl_verify' => true, 'headers' => $headers )
+		);
 
-		$result = json_decode( wp_remote_retrieve_body( $response ), true );
-		//echo '<pre>' . print_r( $result, true ) . '</pre>'; exit;
+		if ( ! is_wp_error( $searchResponse ) ) {
+			$result = json_decode( wp_remote_retrieve_body( $searchResponse ), true );
+			return $result['message']['items'][0];
+		}
 
-		return $result['message']['items'][0];
+		// Failing that, return error code.
+		return current_user_can( 'manage_options' ) ? $response->get_error_message() : '';
 	}
 	
 	function display( $transient ) {
