@@ -267,7 +267,7 @@ class Citation_Importer extends WP_Importer {
 					<tr>
 						<th></th>
 						<td class="citation column-primary" colspan="5">
-							<?php printf( __( 'No results found for "%s."', 'import-citation' ), $queries[$index] ); ?>
+							<?php printf( __( 'No results found for "%s."', 'import-citation' ), esc_html( $queries[$index] ) ); ?>
 						</td>
 					</tr>
 				<?php
